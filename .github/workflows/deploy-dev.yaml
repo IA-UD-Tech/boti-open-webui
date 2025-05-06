@@ -40,7 +40,7 @@ jobs:
             curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/heads/dev/docker-compose.dev.yml -o docker-compose.dev.yml
             
             echo "🔧 Generando archivo .env..."
-            cat <<EOF > ~/.env
+            cat <<EOF > .env
             ENV=dev
             WEBUI_NAME=DEV-Boti
             DEFAULT_LOCALE=es
