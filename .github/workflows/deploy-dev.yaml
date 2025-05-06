@@ -18,6 +18,8 @@ env:
   GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   WEBUI_SECRET_KEY_DEV: ${{ secrets.WEBUI_SECRET_KEY_DEV }}
+  PIPELINES_API_KEY_DEV: ${{ secrets.PIPELINES_API_KEY_DEV }}
+
 
 jobs:
   deploy:
@@ -30,8 +32,14 @@ jobs:
           host: dev.boti.deusto.es
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY_DEV }}
-          envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_DEV
+          envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_DEV, PIPELINES_API_KEY_DEV
           script: |
+            cd /home/ubuntu/app
+
+            echo "📥 Descargando docker-compose.dev.yml desde GitHub..."
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/heads/dev/docker-compose.dev.yml -o docker-compose.dev.yml
+            
+            echo "🔧 Generando archivo .env..."
             cat <<EOF > ~/.env
             ENV=dev
             WEBUI_NAME=DEV-Boti
@@ -43,21 +51,26 @@ jobs:
             GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
             GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
             WEBUI_URL=https://dev.boti.deusto.es
+            PIPELINES_API_KEY=${PIPELINES_API_KEY_DEV}
+            OPEN_WEBUI_PORT=3000
             EOF
-            
-            docker pull ghcr.io/${{ github.repository }}:dev
-            docker stop boti_openwebui || true
-            docker rm boti_openwebui || true
-            
-            docker run -d \
-              --restart always \
-              --network caddy-network \
-              -p 3000:8080 \
-              -v open-webui:/app/backend/data \
-              --env-file ~/.env \
-              --name boti_openwebui \
-              ghcr.io/${{ github.repository }}:dev
 
+            echo "🔌 Verificando red 'caddy-net'..."
+            docker network inspect caddy-net >/dev/null 2>&1 || docker network create caddy-net
+
+            echo "⬇️ Actualizando imágenes de Docker Compose..."
+            docker compose -f docker-compose.dev.yml pull
+
+            echo "🧹 Deteniendo contenedores anteriores..."
+            docker compose -f docker-compose.dev.yml down
+
+            echo "🚀 Iniciando contenedores con las últimas imágenes..."
+            docker compose -f docker-compose.dev.yml up -d
+
+            echo "🧼 Limpiando imágenes no utilizadas..."
+            docker image prune -f
+            
+            echo "🗑️ Eliminando archivo .env con secretos..."
             rm ~/.env
 
             
