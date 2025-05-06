@@ -37,7 +37,7 @@ jobs:
             cd /home/ubuntu/app
 
             echo "📥 Descargando docker-compose.dev.yml desde GitHub..."
-            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/heads/dev/docker-compose.dev.yml -o docker-compose.dev.yml
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/heads/dev/docker-compose.dev.yml -o docker-compose.yml
             
             echo "🔧 Generando archivo .env..."
             cat <<EOF > .env
@@ -59,18 +59,18 @@ jobs:
             docker network inspect caddy-net >/dev/null 2>&1 || docker network create caddy-net
 
             echo "⬇️ Actualizando imágenes de Docker Compose..."
-            docker compose -f docker-compose.dev.yml pull
+            docker compose -f docker-compose.yml pull
 
             echo "🧹 Deteniendo contenedores anteriores..."
-            docker compose -f docker-compose.dev.yml down
+            docker compose -f docker-compose.yml down
 
             echo "🚀 Iniciando contenedores con las últimas imágenes..."
-            docker compose -f docker-compose.dev.yml up -d
+            docker compose -f docker-compose.yml up -d
 
             echo "🧼 Limpiando imágenes no utilizadas..."
             docker image prune -f
             
             echo "🗑️ Eliminando archivo .env con secretos..."
-            rm ~/.env
+            rm .env
 
             
