@@ -1,9 +1,12 @@
-name: Deploy PROD EC2 (tagged release)
+name: Deploy PROD EC2 (tagged release only)
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  workflow_run:
+    workflows: ["Create and publish Docker images with specific build args"]
+    types:
+      - completed
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -15,12 +18,42 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   WEBUI_SECRET_KEY_PROD: ${{ secrets.WEBUI_SECRET_KEY_PROD }}
   PIPELINES_API_KEY_PROD: ${{ secrets.PIPELINES_API_KEY_PROD }}
-
+  
 jobs:
   deploy:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Needed to fetch all tags
+
+      - name: Get current commit SHA
+        id: get_sha
+        run: |
+          echo "sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+
+      - name: Check if SHA matches a tag on main
+        id: check_tag
+        run: |
+          TAG=$(git tag --contains ${{ steps.get_sha.outputs.sha }} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
+          if [ -z "$TAG" ]; then
+            echo "No matching tag for commit ${{ steps.get_sha.outputs.sha }}. Skipping deploy."
+            echo "should_deploy=false" >> $GITHUB_OUTPUT
+          else
+            echo "Found tag: $TAG"
+            echo "tag=$TAG" >> $GITHUB_OUTPUT
+            echo "should_deploy=true" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Exit if no tag matched
+        if: ${{ steps.check_tag.outputs.should_deploy != 'true' }}
+        run: echo "Skipping deployment since no version tag is present."
+
       - name: Deploy to EC2 Prod
+        if: ${{ steps.check_tag.outputs.should_deploy == 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: boti.deusto.es
@@ -30,9 +63,11 @@ jobs:
           script: |
             cd /home/ubuntu/app
 
-            echo "📥 Downloading docker-compose.prod.yml from GitHub..."
-            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/main/docker-compose.dev.yml -o docker-compose.yml
-            
+            echo "📥 Downloading docker-compose.prod.yml from tag ${{ steps.check_tag.outputs.tag }}..."
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/${{ steps.check_tag.outputs.tag }}/docker-compose.dev.yml -o docker-compose.yml
+
+            TAG=${{ steps.check_tag.outputs.tag }}
+
             echo "🔧 Creating .env file..."
             cat <<EOF > .env
             ENV=prod
@@ -47,6 +82,7 @@ jobs:
             WEBUI_URL=https://boti.deusto.es
             PIPELINES_API_KEY=${PIPELINES_API_KEY_PROD}
             OPEN_WEBUI_PORT=3000
+            VERSION_TAG=$TAG
             EOF
 
             echo "🔌 Ensuring Docker network 'caddy-net' exists..."
@@ -66,3 +102,6 @@ jobs:
 
             echo "🗑️ Removing .env file with secrets..."
             rm .env
+
+
+
