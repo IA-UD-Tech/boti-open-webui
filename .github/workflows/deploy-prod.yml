@@ -43,6 +43,8 @@ jobs:
       
       - name: Deploy to EC2 Prod
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          VERSION_TAG: ${{ steps.get_version.outputs.version }}
         with:
           host: boti.deusto.es
           username: ubuntu
@@ -51,10 +53,9 @@ jobs:
           script: |
             cd /home/ubuntu/app
 
-            echo "📥 Downloading docker-compose.prod.yml from tag ${{ steps.check_tag.outputs.tag }}..."
-            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/${{ steps.get_version.outputs.version }}/docker-compose.prod.yml -o docker-compose.yml
+            echo "📥 Downloading docker-compose.prod.yml from tag $VERSION_TAG..."
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/$VERSION_TAG/docker-compose.prod.yml -o docker-compose.yml
 
-            TAG=${{ steps.get_version.outputs.version }}
 
             echo "🔧 Creating .env file..."
             cat <<EOF > .env
@@ -70,7 +71,7 @@ jobs:
             WEBUI_URL=https://boti.deusto.es
             PIPELINES_API_KEY=${PIPELINES_API_KEY_PROD}
             OPEN_WEBUI_PORT=3000
-            VERSION_TAG=$TAG
+            VERSION_TAG=$VERSION_TAG
             EOF
 
             echo "🔌 Ensuring Docker network 'caddy-net' exists..."
