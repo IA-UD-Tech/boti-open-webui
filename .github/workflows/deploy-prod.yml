@@ -1,6 +1,7 @@
 name: Deploy PROD EC2 (tagged release only)
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Create and publish Docker images with specific build args"]
     types:
