@@ -1,0 +1,68 @@
+name: Deploy PROD EC2 (tagged release)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  WEBUI_SECRET_KEY_PROD: ${{ secrets.WEBUI_SECRET_KEY_PROD }}
+  PIPELINES_API_KEY_PROD: ${{ secrets.PIPELINES_API_KEY_PROD }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to EC2 Prod
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: boti.deusto.es
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_PRIVATE_KEY_PROD }}
+          envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_PROD, PIPELINES_API_KEY_PROD
+          script: |
+            cd /home/ubuntu/app
+
+            echo "📥 Downloading docker-compose.prod.yml from GitHub..."
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/main/docker-compose.dev.yml -o docker-compose.yml
+            
+            echo "🔧 Creating .env file..."
+            cat <<EOF > .env
+            ENV=prod
+            WEBUI_NAME=Boti
+            DEFAULT_LOCALE=es
+            OPENAI_API_KEY=${OPENAI_API_KEY}
+            WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY_PROD}
+            ENABLE_LOGIN_FORM=true
+            ENABLE_OAUTH_SIGNUP=false
+            GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+            GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+            WEBUI_URL=https://boti.deusto.es
+            PIPELINES_API_KEY=${PIPELINES_API_KEY_PROD}
+            OPEN_WEBUI_PORT=3000
+            EOF
+
+            echo "🔌 Ensuring Docker network 'caddy-net' exists..."
+            docker network inspect caddy-net >/dev/null 2>&1 || docker network create caddy-net
+
+            echo "⬇️ Pulling latest Docker images..."
+            docker compose -f docker-compose.yml pull
+
+            echo "🧹 Stopping old containers..."
+            docker compose -f docker-compose.yml down
+
+            echo "🚀 Starting containers with updated images..."
+            docker compose -f docker-compose.yml up -d
+
+            echo "🧼 Pruning unused images..."
+            docker image prune -f
+
+            echo "🗑️ Removing .env file with secrets..."
+            rm .env
