@@ -25,35 +25,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Needed to fetch all tags
 
-      - name: Get current commit SHA
-        id: get_sha
+      - name: Check for changes in package.json
         run: |
-          echo "sha=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_OUTPUT
+          git diff --cached --diff-filter=d package.json || {
+            echo "No changes to package.json"
+            exit 1
+          }
 
-      - name: Check if SHA matches a tag on main
-        id: check_tag
+      - name: Get version number from package.json
+        id: get_version
         run: |
-          TAG=$(git tag --contains ${{ steps.get_sha.outputs.sha }} | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' || true)
-          if [ -z "$TAG" ]; then
-            echo "No matching tag for commit ${{ steps.get_sha.outputs.sha }}. Skipping deploy."
-            echo "should_deploy=false" >> $GITHUB_OUTPUT
-          else
-            echo "Found tag: $TAG"
-            echo "tag=$TAG" >> $GITHUB_OUTPUT
-            echo "should_deploy=true" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Exit if no tag matched
-        if: ${{ steps.check_tag.outputs.should_deploy != 'true' }}
-        run: echo "Skipping deployment since no version tag is present."
-
+          VERSION=$(jq -r '.version' package.json)
+          echo "::set-output name=version::$VERSION"
+      
       - name: Deploy to EC2 Prod
-        if: ${{ steps.check_tag.outputs.should_deploy == 'true' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: boti.deusto.es
@@ -64,9 +52,9 @@ jobs:
             cd /home/ubuntu/app
 
             echo "📥 Downloading docker-compose.prod.yml from tag ${{ steps.check_tag.outputs.tag }}..."
-            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/${{ steps.check_tag.outputs.tag }}/docker-compose.dev.yml -o docker-compose.yml
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/${{ steps.get_version.outputs.version }}/docker-compose.prod.yml -o docker-compose.yml
 
-            TAG=${{ steps.check_tag.outputs.tag }}
+            TAG=${{ steps.get_version.outputs.version }}
 
             echo "🔧 Creating .env file..."
             cat <<EOF > .env
