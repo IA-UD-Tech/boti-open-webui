@@ -40,18 +40,20 @@ jobs:
         id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION"
+          echo "version=$VERSION" >> $GITHUB_ENV
       
       - name: Deploy to EC2 Prod
         uses: appleboy/ssh-action@v1.0.3
         env:
-          VERSION_TAG: ${{ steps.get_version.outputs.version }}
+          VERSION_TAG: ${{ env.version }}
         with:
           host: boti.deusto.es
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY_PROD }}
           envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_PROD, PIPELINES_API_KEY_PROD
           script: |
+            echo "DEBUG: VERSION_TAG is $VERSION_TAG"
             cd /home/ubuntu/app
 
             echo "📥 Downloading docker-compose.prod.yml from tag $VERSION_TAG..."
