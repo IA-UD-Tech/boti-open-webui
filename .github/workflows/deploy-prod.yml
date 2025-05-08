@@ -69,8 +69,8 @@ jobs:
             DEFAULT_LOCALE=es
             OPENAI_API_KEY=${OPENAI_API_KEY}
             WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY_PROD}
-            ENABLE_LOGIN_FORM=true
-            ENABLE_OAUTH_SIGNUP=false
+            ENABLE_LOGIN_FORM=false
+            ENABLE_OAUTH_SIGNUP=true
             GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
             GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
             WEBUI_URL=https://boti.deusto.es
