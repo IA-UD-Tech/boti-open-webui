@@ -40,7 +40,7 @@ jobs:
         id: get_version
         run: |
           VERSION=$(jq -r '.version' package.json)
-          echo "::set-output name=version::$VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Deploy to EC2 Prod
         uses: appleboy/ssh-action@v1.0.3
@@ -90,8 +90,8 @@ jobs:
             echo "🧼 Pruning unused images..."
             docker image prune -f
 
-            echo "🗑️ Removing .env file with secrets..."
-            rm .env
+            # echo "🗑️ Removing .env file with secrets..."
+            # rm .env
 
 
 
