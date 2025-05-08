@@ -59,7 +59,7 @@ jobs:
             cd /home/ubuntu/app
 
             echo "📥 Downloading docker-compose.prod.yml from tag $VERSION_TAG..."
-            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/tags/$VERSION_TAG/docker-compose.prod.yml -o docker-compose.yml
+            curl -L https://raw.githubusercontent.com/iaud-tech/boti-open-webui/refs/tags/v$VERSION_TAG/docker-compose.prod.yml -o docker-compose.yml
 
 
             echo "🔧 Creating .env file..."
@@ -94,8 +94,8 @@ jobs:
             echo "🧼 Pruning unused images..."
             docker image prune -f
 
-            # echo "🗑️ Removing .env file with secrets..."
-            # rm .env
+            echo "🗑️ Removing .env file with secrets..."
+            rm .env
 
 
 
