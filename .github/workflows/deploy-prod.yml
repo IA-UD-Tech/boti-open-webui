@@ -53,7 +53,7 @@ jobs:
           host: boti.deusto.es
           username: ubuntu
           key: ${{ secrets.EC2_SSH_PRIVATE_KEY_PROD }}
-          envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_PROD, PIPELINES_API_KEY_PROD
+          envs: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, OPENAI_API_KEY, WEBUI_SECRET_KEY_PROD, PIPELINES_API_KEY_PROD, VERSION_TAG
           script: |
             echo "DEBUG: VERSION_TAG is $VERSION_TAG"
             cd /home/ubuntu/app
