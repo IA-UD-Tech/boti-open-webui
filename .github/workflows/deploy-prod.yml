@@ -24,6 +24,8 @@ jobs:
   deploy:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout repository
@@ -41,12 +43,12 @@ jobs:
         run: |
           VERSION=$(jq -r '.version' package.json)
           echo "VERSION=$VERSION"
-          echo "version=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
       
       - name: Deploy to EC2 Prod
         uses: appleboy/ssh-action@v1.0.3
         env:
-          VERSION_TAG: ${{ env.version }}
+          VERSION_TAG: ${{ steps.get_version.outputs.version }}
         with:
           host: boti.deusto.es
           username: ubuntu
